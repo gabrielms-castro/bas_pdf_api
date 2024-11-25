@@ -1,13 +1,15 @@
 import os
-import zipfile
 import tempfile
+import zipfile
+
 import pymupdf
 from django.http import FileResponse, JsonResponse
-from rest_framework.views import APIView
+from rest_framework import status
 from rest_framework.parsers import MultiPartParser
 from rest_framework.permissions import IsAuthenticated
-from rest_framework import status
-from processor.views import ProcessorFactory  # Reutiliza o ProcessorFactory para obter processadores
+from rest_framework.views import APIView
+
+from processor.views import ProcessorFactory
 
 
 class DividerPDFView(APIView):

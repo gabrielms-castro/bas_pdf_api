@@ -1,7 +1,7 @@
 import glob
+import logging
 import os
 import shutil
-import logging
 
 logging.basicConfig(level=logging.INFO)
 
