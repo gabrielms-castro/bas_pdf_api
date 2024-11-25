@@ -27,51 +27,49 @@ class DividerPDFView(APIView):
             return JsonResponse({"error": "Sistema processual não especificado."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            # Salva o PDF temporariamente
+            original_filename = pdf_file.name
+
             with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as temp_pdf:
                 for chunk in pdf_file.chunks():
                     temp_pdf.write(chunk)
 
                 temp_pdf_path = temp_pdf.name
 
-            # Processa o PDF para obter os eventos
             processor = ProcessorFactory().get_processor(sistema_processual)
             eventos = processor.process(temp_pdf_path)
 
-            # Divide o PDF e gera os arquivos
-            output_dir = tempfile.mkdtemp()
-            arquivos_gerados = self.divide_pdf(temp_pdf_path, eventos, output_dir)
+            output_dir = "/tmp"  
+            os.makedirs(output_dir, exist_ok=True)
+            arquivos_gerados = self.divide_pdf(temp_pdf_path, eventos, output_dir, original_filename)
 
-            # Compacta os PDFs em um arquivo ZIP
-            zip_path = self.criar_arquivo_zip(arquivos_gerados)
-
-            # Retorna o arquivo ZIP como resposta
-            response = FileResponse(open(zip_path, 'rb'), as_attachment=True, filename="arquivos_divididos.zip")
-            return response
+            return JsonResponse({"arquivos_divididos": arquivos_gerados}, status=status.HTTP_200_OK)
 
         except ValueError as e:
             return JsonResponse({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
         finally:
-            # Limpa os arquivos temporários
             if os.path.exists(temp_pdf_path):
                 os.remove(temp_pdf_path)
 
-    def divide_pdf(self, pdf_path, eventos, output_dir):
+
+    def divide_pdf(self, pdf_path, eventos, output_dir, original_filename):
         """
         Divide o PDF com base nos eventos fornecidos.
 
         Args:
-            pdf_path (str): Caminho para o arquivo PDF.
+            pdf_path (str): Caminho para o arquivo PDF temporário.
             eventos (list): Lista de dicionários contendo "numero_evento", "pagina_inicial" e "pagina_final".
             output_dir (str): Diretório para salvar os PDFs separados.
+            original_filename (str): Nome original do arquivo enviado.
 
         Returns:
             list: Lista com os caminhos dos arquivos gerados.
         """
-        nome_arquivo = os.path.basename(pdf_path)
-        nome_base, _ = os.path.splitext(nome_arquivo) 
+        # Obtém o nome base do arquivo original (sem extensão)
+        nome_base, _ = os.path.splitext(original_filename)
 
         doc = pymupdf.open(pdf_path)
         arquivos_gerados = []
@@ -84,15 +82,17 @@ class DividerPDFView(APIView):
             if not all([numero_evento, pagina_inicial, pagina_final]):
                 continue
 
+            # Cria um novo PDF para o intervalo de páginas
             novo_pdf = pymupdf.open()
-            for pagina_num in range(pagina_inicial - 1, pagina_final):
+            for pagina_num in range(pagina_inicial - 1, pagina_final):  # pymupdf usa indexação zero
                 novo_pdf.insert_pdf(doc, from_page=pagina_num, to_page=pagina_num)
 
+            # Cria o nome do arquivo com base no arquivo de entrada e número do evento
             output_pdf = os.path.join(
-                output_dir, 
-                f"{nome_base}_evento_{numero_evento}_pagina_inicial_{pagina_inicial}_pagina_final_{pagina_final}.pdf"
+                output_dir,
+                f"{nome_base}_evento_{numero_evento:03d}_pgInicial_{pagina_inicial}_pgFinal_{pagina_final}.pdf"
             )
-            
+
             novo_pdf.save(output_pdf)
             novo_pdf.close()
 
@@ -100,6 +100,7 @@ class DividerPDFView(APIView):
 
         doc.close()
         return arquivos_gerados
+
 
     def criar_arquivo_zip(self, arquivos):
         """
