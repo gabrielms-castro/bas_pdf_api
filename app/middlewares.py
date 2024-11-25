@@ -1,5 +1,9 @@
 import glob
 import os
+import shutil
+import logging
+
+logging.basicConfig(level=logging.INFO)
 
 class CleanTempMiddleware:
     """
@@ -7,19 +11,21 @@ class CleanTempMiddleware:
     """
     def __init__(self, get_response):
         self.get_response = get_response
+        self.temp_dir = "/tmp"
+        os.makedirs(self.temp_dir, exist_ok=True)
 
     def __call__(self, request):
         response = self.get_response(request)
-        self.limpar_pasta_temp()
+        self.clean_temp_folder()
         return response
 
-    def limpar_pasta_temp(self):
-        temp_dir = "/tmp"
-        try:
-            for arquivo in glob.glob(f"{temp_dir}/*"):
-                if os.path.isfile(arquivo):
-                    os.remove(arquivo)
-                elif os.path.isdir(arquivo):
-                    os.rmdir(arquivo)  # Remove diretórios vazios
-        except Exception as e:
-            print(f"Erro ao limpar arquivos temporários: {e}")
+def clean_temp_folder(self):
+    try:
+        for arquivo in glob.glob(f"{self.temp_dir}/*"):
+            if os.path.isfile(arquivo):
+                os.remove(arquivo)
+            elif os.path.isdir(arquivo):
+                shutil.rmtree(arquivo)
+        logging.info(f"Arquivos temporários limpos em {self.temp_dir}")
+    except Exception as e:
+        logging.error(f"Erro ao limpar arquivos temporários: {e}")
