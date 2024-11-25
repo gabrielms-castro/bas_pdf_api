@@ -1,16 +1,13 @@
 import os
 import zipfile
 import tempfile
-
-from django.http import FileResponse
-from django.http import JsonResponse
-
+import pymupdf
+from django.http import FileResponse, JsonResponse
 from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from processor.views import ProcessorFactory  # Reutiliza o ProcessorFactory para obter processadores
-import pymupdf
 
 
 class DividerPDFView(APIView):
@@ -18,59 +15,65 @@ class DividerPDFView(APIView):
     permission_classes = (IsAuthenticated,)
 
     def post(self, request):
+        """
+        Divide o PDF enviado com base nos eventos e retorna um arquivo ZIP contendo os PDFs gerados.
+        """
+        
         pdf_file = request.FILES.get("file")
         if not pdf_file:
-            return JsonResponse({"error": "Nenhum arquivo PDF enviado."}, status=status.HTTP_400_BAD_REQUEST)
+            return self.create_error_response("Nenhum arquivo PDF enviado.", status.HTTP_400_BAD_REQUEST)
 
         sistema_processual = request.data.get("sistema_processual")
         if not sistema_processual:
-            return JsonResponse({"error": "Sistema processual não especificado."}, status=status.HTTP_400_BAD_REQUEST)
+            return self.create_error_response("Sistema processual não especificado.", status.HTTP_400_BAD_REQUEST)
 
+        nome_arquivo = request.data.get("nome_arquivo", pdf_file.name)
+        
         try:
-            original_filename = pdf_file.name
+            # Salva o PDF temporariamente
+            temp_pdf_path = self.save_temp_file(pdf_file)
 
-            with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as temp_pdf:
-                for chunk in pdf_file.chunks():
-                    temp_pdf.write(chunk)
+            # Processa o PDF para obter os eventos
+            eventos = self.process_pdf(temp_pdf_path, sistema_processual)
 
-                temp_pdf_path = temp_pdf.name
+            # Divide o PDF e gera os arquivos
+            output_dir = tempfile.mkdtemp()
+            arquivos_gerados = self.divide_pdf(temp_pdf_path, eventos, output_dir, nome_arquivo)
 
-            processor = ProcessorFactory().get_processor(sistema_processual)
-            eventos = processor.process(temp_pdf_path)
+            # Compacta os PDFs em um arquivo ZIP
+            zip_path = self.criar_arquivo_zip(arquivos_gerados)
 
-            output_dir = "/tmp"  
-            os.makedirs(output_dir, exist_ok=True)
-            arquivos_gerados = self.divide_pdf(temp_pdf_path, eventos, output_dir, original_filename)
-
-            return JsonResponse({"arquivos_divididos": arquivos_gerados}, status=status.HTTP_200_OK)
+            # Retorna o arquivo ZIP como resposta
+            return FileResponse(open(zip_path, 'rb'), as_attachment=True, filename="arquivos_divididos.zip")
 
         except ValueError as e:
-            return JsonResponse({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return self.create_error_response(str(e), status.HTTP_400_BAD_REQUEST)
         
         except Exception as e:
-            return JsonResponse({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return self.create_error_response(str(e), status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def save_temp_file(self, pdf_file):
+        """
+        Salva um arquivo PDF temporariamente no servidor.
+        """
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as temp_pdf:
+            for chunk in pdf_file.chunks():
+                temp_pdf.write(chunk)
+           
+            return temp_pdf.name
+
+    def process_pdf(self, pdf_path, sistema_processual):
+        """
+        Processa o PDF usando o processador adequado para o sistema processual.
+        """
+        processor = ProcessorFactory().get_processor(sistema_processual)
         
-        finally:
-            if os.path.exists(temp_pdf_path):
-                os.remove(temp_pdf_path)
+        return processor.process(pdf_path)
 
-
-    def divide_pdf(self, pdf_path, eventos, output_dir, original_filename):
+    def divide_pdf(self, pdf_path, eventos, output_dir, nome_arquivo):
         """
         Divide o PDF com base nos eventos fornecidos.
-
-        Args:
-            pdf_path (str): Caminho para o arquivo PDF temporário.
-            eventos (list): Lista de dicionários contendo "numero_evento", "pagina_inicial" e "pagina_final".
-            output_dir (str): Diretório para salvar os PDFs separados.
-            original_filename (str): Nome original do arquivo enviado.
-
-        Returns:
-            list: Lista com os caminhos dos arquivos gerados.
         """
-        # Obtém o nome base do arquivo original (sem extensão)
-        nome_base, _ = os.path.splitext(original_filename)
-
         doc = pymupdf.open(pdf_path)
         arquivos_gerados = []
 
@@ -82,38 +85,33 @@ class DividerPDFView(APIView):
             if not all([numero_evento, pagina_inicial, pagina_final]):
                 continue
 
-            # Cria um novo PDF para o intervalo de páginas
             novo_pdf = pymupdf.open()
-            for pagina_num in range(pagina_inicial - 1, pagina_final):  # pymupdf usa indexação zero
+            for pagina_num in range(pagina_inicial - 1, pagina_final):
                 novo_pdf.insert_pdf(doc, from_page=pagina_num, to_page=pagina_num)
 
-            # Cria o nome do arquivo com base no arquivo de entrada e número do evento
-            output_pdf = os.path.join(
-                output_dir,
-                f"{nome_base}_evento_{numero_evento:03d}_pgInicial_{pagina_inicial}_pgFinal_{pagina_final}.pdf"
-            )
-
+            output_pdf = os.path.join(output_dir, f"{nome_arquivo}_evento_{numero_evento}_pgInicial_{pagina_inicial}_pgFinal_{pagina_final}.pdf")
             novo_pdf.save(output_pdf)
             novo_pdf.close()
 
             arquivos_gerados.append(output_pdf)
 
         doc.close()
+        
         return arquivos_gerados
-
 
     def criar_arquivo_zip(self, arquivos):
         """
         Cria um arquivo ZIP com os arquivos gerados.
-
-        Args:
-            arquivos (list): Lista de caminhos para os arquivos gerados.
-
-        Returns:
-            str: Caminho para o arquivo ZIP gerado.
         """
         zip_path = tempfile.NamedTemporaryFile(suffix=".zip", delete=False).name
         with zipfile.ZipFile(zip_path, 'w') as zipf:
             for arquivo in arquivos:
                 zipf.write(arquivo, os.path.basename(arquivo))
+        
         return zip_path
+
+    def create_error_response(self, message, status_code):
+        """
+        Cria uma resposta de erro JSON.
+        """
+        return JsonResponse({"error": message}, status=status_code)

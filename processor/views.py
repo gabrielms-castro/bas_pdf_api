@@ -19,6 +19,7 @@ class PJEProcessor(ProcessorBase):
     def process(self, pdf_path):
         texto_paginas = self.pdf_text_extract(pdf_path)
         eventos = self.pje_processor(texto_paginas)
+        
         return self.rename_events(eventos)
 
     def pdf_text_extract(self, pdf_path):
@@ -27,6 +28,7 @@ class PJEProcessor(ProcessorBase):
         for pagina_num in range(len(doc)):
             pagina = doc.load_page(pagina_num)
             texto_paginas[pagina_num + 1] = pagina.get_text()
+        
         return texto_paginas
 
     def rename_events(self, events):
@@ -37,6 +39,7 @@ class PJEProcessor(ProcessorBase):
         for event in events:
             numero_evento += 1
             event["numero_evento"] = f"{numero_evento:0{num_digitos}d}"  
+       
         return events
 
 
@@ -74,7 +77,9 @@ class PJEProcessor(ProcessorBase):
 class EPROCProcessor(ProcessorBase):
     def process(self, pdf_path):
         texto_paginas = self.pdf_text_extract(pdf_path)
-        return self.eproc_processor(texto_paginas)
+        eventos = self.eproc_processor(texto_paginas)
+       
+        return self.rename_events(eventos)
 
     def pdf_text_extract(self, pdf_path):
         doc = pymupdf.open(pdf_path)
@@ -82,8 +87,20 @@ class EPROCProcessor(ProcessorBase):
         for pagina_num in range(len(doc)):
             pagina = doc.load_page(pagina_num)
             texto_paginas[pagina_num + 1] = pagina.get_text()
+        
         return texto_paginas
+    
+    def rename_events(self, events):
+        numero_evento = 0
+        total_eventos = len(events)
+        num_digitos = len(str(total_eventos))
 
+        for event in events:
+            numero_evento += 1
+            event["numero_evento"] = f"{numero_evento:0{num_digitos}d}"  
+       
+        return events
+    
     def eproc_processor(self, texto_paginas):
         eventos = []
         evento_atual = None
@@ -100,6 +117,7 @@ class EPROCProcessor(ProcessorBase):
                     "pagina_inicial": pagina_num,
                     "pagina_final": None,
                 }
+            
             elif evento_atual:
                 evento_atual["pagina_final"] = pagina_num
 
@@ -111,10 +129,13 @@ class EPROCProcessor(ProcessorBase):
 
 class ProcessorFactory:
     def get_processor(self, sistema_processual):
+        
         if sistema_processual == "pje":
             return PJEProcessor()
+        
         elif sistema_processual == "eproc":
             return EPROCProcessor()
+        
         else:
             raise ValueError("Sistema processual inválido.")
 
@@ -146,8 +167,10 @@ class ProcessarPDFView(APIView):
 
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
         finally:
             if os.path.exists(temp_pdf_path):
                 os.remove(temp_pdf_path)
