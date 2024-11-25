@@ -70,6 +70,9 @@ class DividerPDFView(APIView):
         Returns:
             list: Lista com os caminhos dos arquivos gerados.
         """
+        nome_arquivo = os.path.basename(pdf_path)
+        nome_base, _ = os.path.splitext(nome_arquivo) 
+
         doc = pymupdf.open(pdf_path)
         arquivos_gerados = []
 
@@ -85,7 +88,11 @@ class DividerPDFView(APIView):
             for pagina_num in range(pagina_inicial - 1, pagina_final):
                 novo_pdf.insert_pdf(doc, from_page=pagina_num, to_page=pagina_num)
 
-            output_pdf = os.path.join(output_dir, f"evento_{numero_evento}.pdf")
+            output_pdf = os.path.join(
+                output_dir, 
+                f"{nome_base}_evento_{numero_evento}_pagina_inicial_{pagina_inicial}_pagina_final_{pagina_final}.pdf"
+            )
+            
             novo_pdf.save(output_pdf)
             novo_pdf.close()
 

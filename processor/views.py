@@ -31,10 +31,14 @@ class PJEProcessor(ProcessorBase):
 
     def rename_events(self, events):
         numero_evento = 0
+        total_eventos = len(events)
+        num_digitos = len(str(total_eventos))
+
         for event in events:
             numero_evento += 1
-            event["numero_evento"] = numero_evento
+            event["numero_evento"] = f"{numero_evento:0{num_digitos}d}"  
         return events
+
 
     def pje_processor(self, texto_paginas):
         eventos = []
