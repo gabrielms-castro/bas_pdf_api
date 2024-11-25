@@ -19,13 +19,13 @@ class CleanTempMiddleware:
         self.clean_temp_folder()
         return response
 
-def clean_temp_folder(self):
-    try:
-        for arquivo in glob.glob(f"{self.temp_dir}/*"):
-            if os.path.isfile(arquivo):
-                os.remove(arquivo)
-            elif os.path.isdir(arquivo):
-                shutil.rmtree(arquivo)
-        logging.info(f"Arquivos temporários limpos em {self.temp_dir}")
-    except Exception as e:
-        logging.error(f"Erro ao limpar arquivos temporários: {e}")
+    def clean_temp_folder(self):
+        try:
+            for arquivo in glob.glob(f"{self.temp_dir}/*"):
+                if os.path.isfile(arquivo):
+                    os.remove(arquivo)
+                elif os.path.isdir(arquivo):
+                    shutil.rmtree(arquivo)
+            logging.info(f"Arquivos temporários limpos em {self.temp_dir}")
+        except Exception as e:
+            logging.error(f"Erro ao limpar arquivos temporários: {e}")
