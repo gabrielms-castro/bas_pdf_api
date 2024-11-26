@@ -85,25 +85,44 @@ class EPROCProcessor(ProcessorBase):
         evento_atual = None
 
         for pagina_num, texto in texto_paginas.items():
+            # Identifica a página de separação
             if "PÁGINA DE SEPARAÇÃO" in texto:
+                # Fecha o evento anterior, se existir
                 if evento_atual:
+                    evento_atual["pagina_inicial"] += 1
                     evento_atual["pagina_final"] = pagina_num - 1
-                    eventos.append(evento_atual)
+                    
+                    # Verifica se o evento é válido antes de adicioná-lo
+                    if evento_atual["pagina_inicial"] <= evento_atual["pagina_final"]:
+                        eventos.append(evento_atual)
 
-                numero_evento = re.search(r"Evento (\d+)", texto)
+                # Extrai o número do evento
+                numero_evento_match = re.search(r"Evento (\d+)", texto)
+                numero_evento = int(numero_evento_match.group(1)) if numero_evento_match else None
+
+                # Inicia um novo evento
                 evento_atual = {
-                    "numero_evento": int(numero_evento.group(1)) if numero_evento else None,
+                    "numero_evento": numero_evento,
                     "pagina_inicial": pagina_num,
                     "pagina_final": None,
                 }
-            
-            elif evento_atual:
-                evento_atual["pagina_final"] = pagina_num
+                
+            else:
+                # Continua atualizando a página final do evento atual
+                if evento_atual:
+                    evento_atual["pagina_final"] = pagina_num
 
+        # Adiciona o último evento, se ainda não foi adicionado
         if evento_atual:
-            eventos.append(evento_atual)
+            evento_atual["pagina_inicial"] += 1
+            if evento_atual["pagina_inicial"] <= evento_atual["pagina_final"]:
+                eventos.append(evento_atual)
+
+        # Verificação adicional: remove eventos sem número de evento
+        eventos = [evento for evento in eventos if evento["numero_evento"] is not None]
 
         return eventos
+
 
 class ESAJProcessor(ProcessorBase):
     def process(self, pdf_path):
