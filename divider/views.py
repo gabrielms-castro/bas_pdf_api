@@ -89,6 +89,7 @@ class DividerPDFView(APIView):
                 numero_evento = evento.get("numero_evento")
                 pagina_inicial = evento.get("pagina_inicial") - 1
                 pagina_final = evento.get("pagina_final") - 1
+                data_evento = evento.get("data_evento")
 
                 # Cria um novo documento para o evento
                 novo_pdf = pymupdf.open()
@@ -98,7 +99,7 @@ class DividerPDFView(APIView):
 
                 output_pdf = os.path.join(
                     output_dir,
-                    f"{nome_arquivo}_evento_{numero_evento}_pgInicial_{pagina_inicial + 1}_pgFinal_{pagina_final + 1}.pdf",
+                    f"{nome_arquivo}_evento_{numero_evento}_pgInicial_{pagina_inicial + 1}_pgFinal_{pagina_final + 1}_{data_evento}.pdf",
                 )
 
                 # Salva o novo PDF

@@ -42,6 +42,16 @@ class PJEProcessor(ProcessorBase):
         
         return self.rename_events(eventos)
 
+    def extract_date(self, texto):
+        """
+        Extrai a data no formato DD-MM-YYYY de um texto.
+        """
+        match = re.search(r"(\d{2}/\d{2}/\d{4})", texto)
+        if match:
+            # Substitui / por -
+            return match.group(1).replace("/", "-")
+        return None
+
     def pje_processor(self, texto_paginas):
         eventos = []
         evento_atual = None
@@ -51,6 +61,9 @@ class PJEProcessor(ProcessorBase):
             match = re.search(r"Número do documento:\s*(\d+)", texto)
             if match:
                 numero_evento = match.group(1)
+
+                # Extrai a data da página atual
+                data_evento = self.extract_date(texto)
 
                 if evento_atual and evento_atual["numero_evento"] != numero_evento:
                     evento_atual["pagina_final"] = pagina_num - 1
@@ -62,10 +75,15 @@ class PJEProcessor(ProcessorBase):
                         "numero_evento": numero_evento,
                         "pagina_inicial": pagina_num,
                         "pagina_final": None,
+                        "data_evento": data_evento,
                     }
 
             elif evento_atual:
                 evento_atual["pagina_final"] = pagina_num
+
+                # Verifica se a data está na primeira página do evento
+                if evento_atual["pagina_inicial"] == pagina_num:
+                    data_na_pagina = self.extract_date(texto)
 
         if evento_atual:
             evento_atual["pagina_final"] = total_paginas
@@ -73,13 +91,24 @@ class PJEProcessor(ProcessorBase):
 
         return eventos
 
+
 class EPROCProcessor(ProcessorBase):
     def process(self, pdf_path):
         texto_paginas = self.pdf_text_extract(pdf_path)
         eventos = self.eproc_processor(texto_paginas)
-       
         return self.rename_events(eventos)
     
+    def extract_date(self, texto):
+        """
+        Extrai a data no formato DD-MM-YYYY de um texto.
+        """
+        match = re.search(r"(\d{2}/\d{2}/\d{4})", texto)
+        if match:
+            return match.group(1).replace("/", "-")
+
+        return None
+
+
     def eproc_processor(self, texto_paginas):
         eventos = []
         evento_atual = None
@@ -91,7 +120,7 @@ class EPROCProcessor(ProcessorBase):
                 if evento_atual:
                     evento_atual["pagina_inicial"] += 1
                     evento_atual["pagina_final"] = pagina_num - 1
-                    
+
                     # Verifica se o evento é válido antes de adicioná-lo
                     if evento_atual["pagina_final"] is not None and evento_atual["pagina_inicial"] <= evento_atual["pagina_final"]:
                         eventos.append(evento_atual)
@@ -100,17 +129,25 @@ class EPROCProcessor(ProcessorBase):
                 numero_evento_match = re.search(r"Evento (\d+)", texto)
                 numero_evento = int(numero_evento_match.group(1)) if numero_evento_match else None
 
+                # Extrai a data na página de separação
+                data_evento = self.extract_date(texto)
+
                 # Inicia um novo evento
                 evento_atual = {
                     "numero_evento": numero_evento,
                     "pagina_inicial": pagina_num,
                     "pagina_final": None,
+                    "data_evento": data_evento,
                 }
                 
             else:
                 # Continua atualizando a página final do evento atual
                 if evento_atual:
                     evento_atual["pagina_final"] = pagina_num
+
+                    # Verifica se a data está na primeira página do evento
+                    if evento_atual["pagina_inicial"] == pagina_num:
+                        data_na_pagina = self.extract_date(texto)
 
         # Adiciona o último evento, se ainda não foi adicionado
         if evento_atual:
@@ -130,7 +167,17 @@ class ESAJProcessor(ProcessorBase):
         eventos = self.esaj_processor(texto_paginas)
         
         return self.rename_events(eventos)
-    
+
+    def extract_date(self, texto):
+        """
+        Extrai a data no formato DD-MM-YYYY de um texto.
+        """
+        match = re.search(r'protocolado em (\d{2}/\d{2}/\d{4})', texto)
+        if match:
+            # Substitui / por -
+            return match.group(1).replace("/", "-")
+        return None
+
     def esaj_processor(self, texto_paginas):
         codigos = []
         eventos = []
@@ -141,6 +188,9 @@ class ESAJProcessor(ProcessorBase):
             match = re.search(r'código\s([a-zA-Z0-9]{8}\.)', texto)
             if match:
                 codigo = match.group(1)
+
+                # Extrai a data do texto
+                data_evento = self.extract_date(texto)
 
                 # Se o código é novo, finalize o evento anterior
                 if evento_atual and evento_atual["codigo"] != codigo:
@@ -154,10 +204,15 @@ class ESAJProcessor(ProcessorBase):
                         "codigo": codigo,
                         "pagina_inicial": pagina_num,
                         "pagina_final": pagina_num,  # Atualizado mais tarde
+                        "data_evento": data_evento,
                     }
 
                 # Atualiza a página final do evento atual
                 evento_atual["pagina_final"] = pagina_num
+
+                # Verifica se a data está na primeira página
+                if evento_atual["pagina_inicial"] == pagina_num:
+                    data_na_pagina = self.extract_date(texto)
 
                 # Adiciona o código à lista de códigos, se ainda não existir
                 if codigo not in codigos:
@@ -175,6 +230,7 @@ class ESAJProcessor(ProcessorBase):
             evento.pop("codigo", None)
 
         return eventos
+
 
 class ProcessorFactory:
     def get_processor(self, sistema_processual):
