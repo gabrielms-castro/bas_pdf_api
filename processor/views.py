@@ -179,14 +179,35 @@ class ESAJProcessor(ProcessorBase):
 class ProcessorFactory:
     def get_processor(self, sistema_processual):
         
-        if sistema_processual == "pje":
+        if sistema_processual == "PJE":
             return PJEProcessor()
         
-        elif sistema_processual == "eproc":
+        elif sistema_processual == "E-proc":
             return EPROCProcessor()
         
-        elif sistema_processual == "esaj":
+        elif sistema_processual == "ESAJ":
             return ESAJProcessor()
+        
+        elif sistema_processual == "Creta":
+            raise NotImplementedError
+        
+        elif sistema_processual == "Creta":
+            raise NotImplementedError
+        
+        elif sistema_processual == "Gov.br":
+            raise NotImplementedError
+        
+        elif sistema_processual == "PROJUDI":
+            raise NotImplementedError
+        
+        elif sistema_processual == "Siscad":
+            raise NotImplementedError
+        
+        elif sistema_processual == "TJSE":
+            raise NotImplementedError
+        
+        elif sistema_processual == "Tucujuris":
+            raise NotImplementedError
         
         else:
             raise ValueError("Sistema processual inválido.")
