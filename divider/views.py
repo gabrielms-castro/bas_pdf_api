@@ -14,8 +14,8 @@ from rest_framework.views import APIView
 
 from processor.views import ProcessorFactory
 
-logger = logging.getLogger(__name__)
 
+logger = logging.getLogger(__name__)
 
 class DividerPDFView(APIView):
     parser_classes = [MultiPartParser]
@@ -41,16 +41,12 @@ class DividerPDFView(APIView):
             # Salva o PDF temporariamente
             temp_pdf_path = self.save_temp_file(pdf_file)
 
-            # Compacta o PDF usando Ghostscript
-            temp_pdf_optimized = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False).name
-            self.reduzir_tamanho_pdf(temp_pdf_path, temp_pdf_optimized)
-
             # Processa o PDF para obter os eventos
-            eventos = self.process_pdf(temp_pdf_optimized, sistema_processual)
+            eventos = self.process_pdf(temp_pdf_path, sistema_processual)
 
             # Divide o PDF e gera os arquivos
             output_dir = tempfile.mkdtemp()
-            arquivos_gerados = self.divide_pdf(temp_pdf_optimized, eventos, output_dir, nome_arquivo)
+            arquivos_gerados = self.divide_pdf(temp_pdf_path, eventos, output_dir, nome_arquivo)
 
             # Compacta os PDFs em um arquivo ZIP
             zip_path = self.criar_arquivo_zip(arquivos_gerados)
@@ -64,22 +60,6 @@ class DividerPDFView(APIView):
         except Exception as e:
             logger.error(f"Erro inesperado: {str(e)}\n{traceback.format_exc()}")
             return self.create_error_response(str(e), status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    def reduzir_tamanho_pdf(self, input_pdf, output_pdf):
-        """
-        Reduz o tamanho do PDF usando Ghostscript.
-        """
-        command = [
-            "gs",
-            "-sDEVICE=pdfwrite",
-            "-dCompatibilityLevel=1.4",
-            "-dPDFSETTINGS=/ebook",  # Opções: /screen, /ebook, /printer, /prepress
-            "-dNOPAUSE",
-            "-dBATCH",
-            "-sOutputFile=" + output_pdf,
-            input_pdf,
-        ]
-        subprocess.run(command, check=True)
 
     def save_temp_file(self, pdf_file):
         """
