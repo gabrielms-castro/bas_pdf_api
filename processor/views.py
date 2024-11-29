@@ -93,7 +93,7 @@ class EPROCProcessor(ProcessorBase):
                     evento_atual["pagina_final"] = pagina_num - 1
                     
                     # Verifica se o evento é válido antes de adicioná-lo
-                    if evento_atual["pagina_inicial"] <= evento_atual["pagina_final"]:
+                    if evento_atual["pagina_final"] is not None and evento_atual["pagina_inicial"] <= evento_atual["pagina_final"]:
                         eventos.append(evento_atual)
 
                 # Extrai o número do evento
@@ -115,7 +115,7 @@ class EPROCProcessor(ProcessorBase):
         # Adiciona o último evento, se ainda não foi adicionado
         if evento_atual:
             evento_atual["pagina_inicial"] += 1
-            if evento_atual["pagina_inicial"] <= evento_atual["pagina_final"]:
+            if evento_atual["pagina_final"] is not None and evento_atual["pagina_inicial"] <= evento_atual["pagina_final"]:
                 eventos.append(evento_atual)
 
         # Verificação adicional: remove eventos sem número de evento
