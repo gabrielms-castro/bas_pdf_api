@@ -253,10 +253,8 @@ class ProcessorFactory:
             "Tucujuris": not_implemented,
         }
 
-        # Recupera o processor ou atribui not_implemented se não encontrado
         processor = systems.get(sistema_processual, not_implemented)
         
-        # Chama o processor, que pode ser uma classe ou a função not_implemented
         return processor()
 
 class ProcessarPDFView(APIView):
