@@ -14,6 +14,9 @@ class ProcessorBase:
     def process(self, pdf_path):
         raise NotImplementedError("Subclasses devem implementar o método 'process'.")
     
+    def extract_date(self, texto):
+        raise NotImplementedError("Subclasses devem implementar o método 'extract_date'.")
+    
     def pdf_text_extract(self, pdf_path):
         doc = pymupdf.open(pdf_path)
         texto_paginas = {}
@@ -234,39 +237,27 @@ class ESAJProcessor(ProcessorBase):
 
 class ProcessorFactory:
     def get_processor(self, sistema_processual):
+        def not_implemented():
+            raise NotImplementedError(f"Sistema {sistema_processual} não implementado.")
+
+        systems = {
+            "PJE": PJEProcessor,
+            "E-proc": EPROCProcessor,
+            "ESAJ": ESAJProcessor,
+            
+            "Creta": not_implemented,
+            "Gov.br": not_implemented,
+            "PROJUDI": not_implemented,
+            "Siscad": not_implemented,
+            "TJSE": not_implemented,
+            "Tucujuris": not_implemented,
+        }
+
+        # Recupera o processor ou atribui not_implemented se não encontrado
+        processor = systems.get(sistema_processual, not_implemented)
         
-        if sistema_processual == "PJE":
-            return PJEProcessor()
-        
-        elif sistema_processual == "E-proc":
-            return EPROCProcessor()
-        
-        elif sistema_processual == "ESAJ":
-            return ESAJProcessor()
-        
-        elif sistema_processual == "Creta":
-            raise NotImplementedError
-        
-        elif sistema_processual == "Creta":
-            raise NotImplementedError
-        
-        elif sistema_processual == "Gov.br":
-            raise NotImplementedError
-        
-        elif sistema_processual == "PROJUDI":
-            raise NotImplementedError
-        
-        elif sistema_processual == "Siscad":
-            raise NotImplementedError
-        
-        elif sistema_processual == "TJSE":
-            raise NotImplementedError
-        
-        elif sistema_processual == "Tucujuris":
-            raise NotImplementedError
-        
-        else:
-            raise ValueError("Sistema processual inválido.")
+        # Chama o processor, que pode ser uma classe ou a função not_implemented
+        return processor()
 
 class ProcessarPDFView(APIView):
     parser_classes = [MultiPartParser]
