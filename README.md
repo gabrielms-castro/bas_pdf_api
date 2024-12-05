@@ -132,5 +132,5 @@ Este projeto é licenciado sob a MIT License. Consulte o arquivo `LICENSE` para 
 
 ## Autor
 
-**Seu Nome**  
-Entre em contato: [seu-email@example.com](mailto:seu-email@example.com)
+**Gabriel Santos de Castro**  
+Entre em contato: [gabrielms.castro@gmail.com](mailto:gabrielms.castro@gmail.com)
