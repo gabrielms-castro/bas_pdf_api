@@ -42,7 +42,6 @@ class PJEProcessor(ProcessorBase):
     def process(self, pdf_path):
         texto_paginas = self.pdf_text_extract(pdf_path)
         eventos = self.pje_processor(texto_paginas)
-        
         return self.rename_events(eventos)
 
     def extract_date(self, texto):
@@ -168,7 +167,6 @@ class ESAJProcessor(ProcessorBase):
     def process(self, pdf_path):
         texto_paginas = self.pdf_text_extract(pdf_path)
         eventos = self.esaj_processor(texto_paginas)
-        
         return self.rename_events(eventos)
 
     def extract_date(self, texto):
@@ -234,20 +232,100 @@ class ESAJProcessor(ProcessorBase):
 
         return eventos
 
+class PROJUDIProcessor(ProcessorBase):  
+    def process(self, pdf_path):
+        texto_paginas = self.pdf_text_extract(pdf_path)
+        eventos = self.projudi_processor(texto_paginas)
+        return self.rename_events(eventos)
+    
+    def extract_date(self, texto):
+        # OBS: PROJUDI BA não tem data de publicação do evento no PDF
+        regex = (
+            r"Publicado Digitalmente em (\d{2}/\d{2}/\d{4}):|" #PROJUDI AM e PR
+            r"(\d{2}/\d{2}/\d{4}):" # PROJUDI GO
+        )
+
+        match = re.search(regex, texto) 
+
+        if match:
+            data_evento = match.group(1) if match.group(1) else match.group(2)
+            return data_evento.replace("/", "-")
+        
+        return None
+    
+    def projudi_processor(self, texto_paginas):
+        codigos = []
+        eventos = []
+        evento_atual = None
+
+        for pagina_num, texto in texto_paginas.items():
+            # Busca pelo código na página
+            # Regex para PROJUDI AM, BA, GO, PR (talvez seja necessário implementar para outros estados
+            regex = (
+                r"documento:\s([a-zA-Z0-9]{8}\s)|"
+                r"código:\s([0-9]{27}\,)|"
+                r"- Identificador:\s([A-Z0-9]{5}\s[A-Z0-9]{5}\s[A-Z0-9]{5}\s[A-Z0-9]{5})"
+            )
+
+            match = re.search(regex, texto)
+
+            if match:
+                codigo = match.group(1) or match.group(2) or match.group(3)
+
+                data_evento = self.extract_date(texto)
+
+                # Se o código é novo, finalize o evento anterior
+                if evento_atual and evento_atual["codigo"] != codigo:
+                    eventos.append(evento_atual)
+                    evento_atual = None
+
+                # Inicia um novo evento se necessário
+                if not evento_atual:
+                    evento_atual = {
+                        "numero_evento": len(codigos) + 1 if codigo not in codigos else codigos.index(codigo) + 1,
+                        "codigo": codigo,
+                        "pagina_inicial": pagina_num,
+                        "pagina_final": pagina_num,
+                        "data_evento": data_evento,
+                    }
+
+                # Atualiza a página final do evento atual
+                evento_atual["pagina_final"] = pagina_num
+
+                # Adiciona o código à lista de códigos, se ainda não existir
+                if codigo not in codigos:
+                    codigos.append(codigo)
+            elif evento_atual:
+                # Atualiza a página final enquanto o evento está ativo
+                evento_atual["pagina_final"] = pagina_num
+
+        # Finaliza o último evento, se existir
+        if evento_atual:
+            eventos.append(evento_atual)
+
+        # Remove o campo 'codigo' do resultado final
+        for evento in eventos:
+            evento.pop("codigo", None)
+
+        return eventos
 
 class ProcessorFactory:
     def get_processor(self, sistema_processual):
+        
         def not_implemented():
+            if sistema_processual not in systems:
+                raise ValueError(f"Sistema desconhecido.")
+            
             raise NotImplementedError(f"Sistema {sistema_processual} não implementado.")
 
         systems = {
             "PJE": PJEProcessor,
             "E-proc": EPROCProcessor,
             "ESAJ": ESAJProcessor,
+            "PROJUDI": PROJUDIProcessor,
             
             "Creta": not_implemented,
             "Gov.br": not_implemented,
-            "PROJUDI": not_implemented,
             "Siscad": not_implemented,
             "TJSE": not_implemented,
             "Tucujuris": not_implemented,
