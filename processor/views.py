@@ -241,8 +241,8 @@ class PROJUDIProcessor(ProcessorBase):
     def extract_date(self, texto):
         # OBS: PROJUDI BA não tem data de publicação do evento no PDF
         regex = (
-            r"Publicado Digitalmente em (\d{2}/\d{2}/\d{4}):|" #PROJUDI AM e PR
-            r"(\d{2}/\d{2}/\d{4}):" # PROJUDI GO
+            r"Publicado Digitalmente em (\d{2}/\d{2}/\d{4})|" # PROJUDI GO
+            r"(\d{2}/\d{2}/\d{4}):" # PROJUDI AM e PR
         )
 
         match = re.search(regex, texto) 
@@ -311,7 +311,7 @@ class PROJUDIProcessor(ProcessorBase):
 
 class ProcessorFactory:
     def get_processor(self, sistema_processual):
-        
+
         def not_implemented():
             if sistema_processual not in systems:
                 raise ValueError(f"Sistema desconhecido.")
