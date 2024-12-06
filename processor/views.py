@@ -309,6 +309,67 @@ class PROJUDIProcessor(ProcessorBase):
 
         return eventos
 
+class TJSEProcessor(ProcessorBase):
+    def process(self, pdf_path):
+        texto_paginas = self.pdf_text_extract(pdf_path)
+        eventos = self.tjse_processor(texto_paginas)
+        return self.rename_events(eventos)
+
+    def extract_date(self, texto):
+        regex = r'DATA:\s+(\d{2}/\d{2}/\d{4})'
+        match = re.search(regex, texto)
+        if match:
+            data_evento = match.group(1).replace("/", "-")
+            return data_evento
+            
+    def tjse_processor(self, texto_paginas):
+        codigos = []
+        eventos = []
+        evento_atual = None
+
+        for pagina_num, texto in texto_paginas.items():
+            # Busca pelo código na página
+            # Regex para PROJUDI AM, BA, GO, PR (talvez seja necessário implementar para outros estados
+            match = re.search(r'MOVIMENTO:\s+(.+)', texto)
+            if match:
+                codigo = match.group(1)
+
+
+                # Se o código é novo, finalize o evento anterior
+                if evento_atual and evento_atual["codigo"] != codigo:
+                    eventos.append(evento_atual)
+                    evento_atual = None
+
+                # Inicia um novo evento se necessário
+                if not evento_atual:
+                    evento_atual = {
+                        "numero_evento": len(codigos) + 1 if codigo not in codigos else codigos.index(codigo) + 1,
+                        "codigo": codigo,
+                        "pagina_inicial": pagina_num,
+                        "pagina_final": pagina_num,
+                        "data_evento": self.extract_date(texto),
+                    }
+
+                # Atualiza a página final do evento atual
+                evento_atual["pagina_final"] = pagina_num
+
+                # Adiciona o código à lista de códigos, se ainda não existir
+                if codigo not in codigos:
+                    codigos.append(codigo)
+            elif evento_atual:
+                # Atualiza a página final enquanto o evento está ativo
+                evento_atual["pagina_final"] = pagina_num
+
+        # Finaliza o último evento, se existir
+        if evento_atual:
+            eventos.append(evento_atual)
+
+        # Remove o campo 'codigo' do resultado final
+        for evento in eventos:
+            evento.pop("codigo", None)
+
+        return eventos        
+
 class ProcessorFactory:
     def get_processor(self, sistema_processual):
 
@@ -323,11 +384,11 @@ class ProcessorFactory:
             "E-proc": EPROCProcessor,
             "ESAJ": ESAJProcessor,
             "PROJUDI": PROJUDIProcessor,
+            "TJSE": TJSEProcessor,
             
             "Creta": not_implemented,
             "Gov.br": not_implemented,
             "Siscad": not_implemented,
-            "TJSE": not_implemented,
             "Tucujuris": not_implemented,
         }
 
