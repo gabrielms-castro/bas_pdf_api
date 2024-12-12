@@ -48,7 +48,7 @@ class PJEProcessor(ProcessorBase):
         """
         Extrai a data no formato DD-MM-YYYY de um texto.
         """
-        match = re.search(r"(\d{2}/\d{2}/\d{4})", texto)
+        match = re.search(r"\s+-\s+((?:0[1-9]|[12][0-9]|3[01])[-/](?:0[1-9]|1[0-2])[-/](?:\d{4}))", texto)
         if match:
             # Substitui / por -
             return match.group(1).replace("/", "-")
@@ -232,7 +232,7 @@ class ESAJProcessor(ProcessorBase):
 
         return eventos
 
-class PROJUDIProcessor(ProcessorBase):  
+class PROJUDIProcessor(ProcessorBase): 
     def process(self, pdf_path):
         texto_paginas = self.pdf_text_extract(pdf_path)
         eventos = self.projudi_processor(texto_paginas)
