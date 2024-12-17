@@ -173,7 +173,7 @@ class ESAJProcessor(ProcessorBase):
         """
         Extrai a data no formato DD-MM-YYYY de um texto.
         """
-        match = re.search(r'protocolado em (\d{2}/\d{2}/\d{4})', texto)
+        match = re.search(r'(?:protocolado em|liberado nos autos em) (\d{2}/\d{2}/\d{4})', texto)
         if match:
             # Substitui / por -
             return match.group(1).replace("/", "-")
