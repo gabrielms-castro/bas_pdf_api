@@ -9,6 +9,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from django.conf import settings
 
 class ProcessorBase:
     def process(self, pdf_path):
@@ -410,7 +411,8 @@ class ProcessarPDFView(APIView):
             return Response({"error": "Sistema processual não especificado."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as temp_pdf:
+            # Salva o PDF temporariamente no diretório TEMP_DIR
+            with tempfile.NamedTemporaryFile(suffix=".pdf", dir=settings.TEMP_DIR, delete=False) as temp_pdf:
                 for chunk in pdf_file.chunks():
                     temp_pdf.write(chunk)
 
@@ -423,10 +425,11 @@ class ProcessarPDFView(APIView):
 
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        
+
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
+
         finally:
+            # Remove o arquivo temporário após o processamento
             if os.path.exists(temp_pdf_path):
                 os.remove(temp_pdf_path)

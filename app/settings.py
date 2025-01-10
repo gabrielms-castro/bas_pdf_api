@@ -136,3 +136,10 @@ SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(days=365),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=365),
 }
+
+
+# Diretório temporário personalizado
+TEMP_DIR = os.path.join(BASE_DIR, 'tmp')
+
+# Cria o diretório se ele não existir
+os.makedirs(TEMP_DIR, exist_ok=True)

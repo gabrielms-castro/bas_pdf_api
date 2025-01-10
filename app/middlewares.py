@@ -2,16 +2,17 @@ import glob
 import logging
 import os
 import shutil
+from django.conf import settings
 
 logging.basicConfig(level=logging.INFO)
 
 class CleanTempMiddleware:
     """
-    Middleware para limpar arquivos temporários na pasta /tmp após cada requisição.
+    Middleware para limpar arquivos temporários na pasta TEMP_DIR após cada requisição.
     """
     def __init__(self, get_response):
         self.get_response = get_response
-        self.temp_dir = "/tmp"
+        self.temp_dir = settings.TEMP_DIR  # Agora usando o TEMP_DIR do settings
         os.makedirs(self.temp_dir, exist_ok=True)
 
     def __call__(self, request):
