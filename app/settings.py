@@ -5,7 +5,7 @@ from pathlib import Path
 from decouple import config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 # Quick-start development settings - unsuitable for production
@@ -140,5 +140,6 @@ SIMPLE_JWT = {
 
 # Diretório temporário personalizado
 TEMP_DIR = os.path.join(BASE_DIR, 'tmp')
+
 # Cria o diretório se ele não existir
 os.makedirs(TEMP_DIR, exist_ok=True)
