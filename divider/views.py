@@ -13,9 +13,10 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
 from processor.views import ProcessorFactory
-
+from .factory import PdfDividerFactory
 
 logger = logging.getLogger(__name__)
+
 
 class DividerPDFView(APIView):
     parser_classes = [MultiPartParser]
@@ -46,7 +47,8 @@ class DividerPDFView(APIView):
 
             # Divide o PDF e gera os arquivos
             output_dir = tempfile.mkdtemp()
-            arquivos_gerados = self.divide_pdf(temp_pdf_path, eventos, output_dir, nome_arquivo)
+            divider = PdfDividerFactory.get_divider(sistema_processual)
+            arquivos_gerados = divider.divide_pdf(temp_pdf_path, eventos, output_dir, nome_arquivo)
 
             # Compacta os PDFs em um arquivo ZIP
             zip_path = self.criar_arquivo_zip(arquivos_gerados)
@@ -129,3 +131,4 @@ class DividerPDFView(APIView):
         Cria uma resposta de erro JSON.
         """
         return JsonResponse({"error": message}, status=status_code)
+

@@ -375,7 +375,7 @@ class ProcessorFactory:
 
         def not_implemented():
             if sistema_processual not in systems:
-                raise ValueError(f"Sistema desconhecido.")
+                raise ValueError("Sistema desconhecido.")
             
             raise NotImplementedError(f"Sistema {sistema_processual} não implementado.")
 
