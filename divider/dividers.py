@@ -1,7 +1,13 @@
+import logging
 import os
 import subprocess
 import tempfile
 import pymupdf
+
+from app.extensions import pdf_divider
+from django.conf import settings
+
+logger = logging.getLogger(__name__)
 
 class PdfDividerStrategy:
     """
@@ -45,37 +51,59 @@ class GeneralPdfDivider(PdfDividerStrategy):
         return arquivos_gerados
 
 class EprocPdfDivider(PdfDividerStrategy):
-    """
-    Divisor de PDF para o sistema EPROC usando Ghostscript.
-    """
     def divide_pdf(self, pdf_path, eventos, output_dir, nome_arquivo):
+        logger.info("Chamando extensão C++...")
         arquivos_gerados = []
 
-        for evento in eventos:
-            numero_evento = evento.get("numero_evento")
-            pagina_inicial = evento.get("pagina_inicial")
-            pagina_final = evento.get("pagina_final")
-            data_evento = evento.get("data_evento")
+        # Cria um diretório temporário específico para este processamento
 
-            output_pdf = os.path.join(
-                output_dir,
-                f"{nome_arquivo}_evento_{numero_evento}_pgInicial_{pagina_inicial}_pgFinal_{pagina_final}_{data_evento}.pdf",
+        eventos_tuplas = [
+            (
+                evento["pagina_inicial"],
+                evento["pagina_final"],
+                f"{nome_arquivo}_evento_{evento['numero_evento']}_pgInicial_{evento['pagina_inicial']}_pgFinal_{evento['pagina_final']}_{evento['data_evento']}.pdf",
             )
+            for evento in eventos
+        ]
 
-            comando = [
-                "gs",
-                "-dBATCH",
-                "-dNOPAUSE",
-                "-sDEVICE=pdfwrite",
-                f"-sPageList={pagina_inicial}-{pagina_final}",
-                f"-sOutputFile={output_pdf}",
-                pdf_path,
-            ]
+        # Chama a extensão C++ para dividir o PDF
+        pdf_divider.divide_pdf(pdf_path, output_dir, eventos_tuplas)
+        logger.info("Extensão C++ chamada com sucesso!")
 
-            try:
-                subprocess.run(comando, check=True)
-                arquivos_gerados.append(output_pdf)
-            except subprocess.CalledProcessError as e:
-                print(f"Erro ao processar evento {numero_evento}: {e}")
+
+        # Adiciona os PDFs gerados à lista de arquivos
+        for _, _, output_file in eventos_tuplas:
+            arquivos_gerados.append(os.path.join(temp_output_dir, output_file))
 
         return arquivos_gerados
+    
+    
+        # for evento in eventos:
+        #     numero_evento = evento.get("numero_evento")
+        #     pagina_inicial = evento.get("pagina_inicial")
+        #     pagina_final = evento.get("pagina_final")
+        #     data_evento = evento.get("data_evento")
+
+        #     output_pdf = os.path.join(
+        #         output_dir,
+        #         f"{nome_arquivo}_evento_{numero_evento}_pgInicial_{pagina_inicial}_pgFinal_{pagina_final}_{data_evento}.pdf",
+        #     )
+
+        #     comando = [
+        #         "gs",
+        #         "-dBATCH",
+        #         "-dNOPAUSE",
+        #         "-sDEVICE=pdfwrite",
+        #         f"-sPageList={pagina_inicial}-{pagina_final}",
+        #         f"-sOutputFile={output_pdf}",
+        #         pdf_path,
+        #     ]
+
+        #     try:
+        #         subprocess.run(comando, check=True)
+        #         arquivos_gerados.append(output_pdf)
+        #     except subprocess.CalledProcessError as e:
+        #         print(f"Erro ao processar evento {numero_evento}: {e}")
+
+        # return arquivos_gerados
+        
