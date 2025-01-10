@@ -10,20 +10,6 @@ from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-
-def load_pdf_divider():
-    # Caminho absoluto para o módulo compilado
-    module_path = os.path.join(os.path.dirname(__file__), "../app/extensions/pdf_divider.cpython-310-x86_64-linux-gnu.so")
-    spec = importlib.util.spec_from_file_location("pdf_divider", module_path)
-    pdf_divider = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(pdf_divider)
-    return pdf_divider
-
-pdf_divider = load_pdf_divider()
-
-
-# Carregue o módulo
-pdf_divider = load_pdf_divider()
 class PdfDividerStrategy:
     """
     Classe base abstrata para diferentes estratégias de divisão de PDF.
